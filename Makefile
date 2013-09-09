@@ -26,5 +26,5 @@ TARGET=main.ihex
 	$(OBJCOPY) -O $(BIN_FORMAT) -R .eeprom $< $@
 
 %.upload : %.ihex
-	echo "$(SUDO) $(AVRDUDE) -q -p$(MCU) -c$(PROTOCOL) -P$(PORT) -b$(BAUD) -Uflash:w:$<:i"
+	$(SUDO) $(AVRDUDE) -q -p$(MCU) -c$(PROTOCOL) -P$(PORT) -b$(BAUD) -Uflash:w:$<:i
 
