@@ -17,14 +17,19 @@ uint16_t ADC_read(uint8_t);
 int main(void){
   uint16_t v = 0;
   double t = 0.0;
+  char t_chr[7];
+
+
+  DDRD |= _BV(PD3) | _BV(PD4) | _BV(PD5);
+  /* Turn off all connected leds, if by
+   * accident they are working */
+  PORTD &= ~(_BV(PD3) | _BV(PD4) | _BV(PD5));
 
   USART_init(MYUBRR);
-
+  /* Remove garbage from serial terminal */
   USART_transmit('\r');
 
   ADC_init();
-
-  char t_chr[7];
 
   while(1){
     v = ADC_read(0);  /* read from ADC0 */
@@ -32,7 +37,16 @@ int main(void){
     memset(t_chr, '\0', sizeof(t_chr));
 
     t = (((double)v * 5.0) / 1024.0 - 0.5) * 100;
-    dtostrf(t, 6, 1, t_chr);
+    dtostrf(t, 5, 1, t_chr);
+
+    if(t < 20.0)
+      PORTD = _BV(PD5) | (PORTD & ~(_BV(PD4) | _BV(PD3)));
+    else {
+      if (t >= 20.0 && t <= 24.0 )
+        PORTD = _BV(PD4) | (PORTD & ~(_BV(PD5) | _BV(PD3)));
+      else
+        PORTD = _BV(PD3) | (PORTD & ~(_BV(PD5) | _BV(PD4)));
+    }
 
     USART_write(t_chr);
     USART_write("\r\n");
