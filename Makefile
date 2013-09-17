@@ -28,3 +28,5 @@ TARGET=main.ihex
 %.upload : %.ihex
 	$(SUDO) $(AVRDUDE) -q -p$(MCU) -c$(PROTOCOL) -P$(PORT) -b$(BAUD) -Uflash:w:$<:i
 
+clean:
+	rm *.out *.ihex
