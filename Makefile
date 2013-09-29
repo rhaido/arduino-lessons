@@ -14,7 +14,7 @@ BIN_FORMAT=ihex
 PORT=/dev/ttyACM0
 BAUD=115200
 PROTOCOL=arduino
-CFLAGS=-Wall -Os -DF_CPU=$(F_CPU) -mmcu=$(MCU)
+CFLAGS=-Wall -Os -DF_CPU=$(F_CPU) -mmcu=$(MCU) -Wl,-u,vfprintf -lprintf_min
 SUDO=sudo
 
 TARGET=main.ihex
