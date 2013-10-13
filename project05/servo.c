@@ -65,9 +65,9 @@ int main(void){
 }
 
 void PWM16_init(){
-  /* Set non-inverting mode for OC0A & OC0B*/
+  /* Set non-inverting mode for OC1A & OC1B*/
   TCCR1A |= _BV(COM1A1) | _BV(COM1B1);
-  TCCR1A &= ~(_BV(COM0A0) | _BV(COM0B0));
+  TCCR1A &= ~(_BV(COM1A0) | _BV(COM1B0));
 
   /* Configure wave-form generator mode: 16bit fast-PWM - for OC1x */
   /* ICR1 defines the TOP value for TCNT1 */
