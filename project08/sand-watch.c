@@ -15,12 +15,46 @@ void USART_transmit(uint8_t);
 void ADC_init();
 uint16_t ADC_read(uint8_t);
 
-void CTC_init();
+void CTC_init(void);
 
 int main(void){
-  uint16_t cnt = 0;
+  uint16_t cnt  = 0;
+  uint8_t scnd = 0;
+  int8_t  stt  = 0;
+  uint8_t prev_diod = 0, cur_diod  = 0;
+
+  USART_init(MYUBRR);
+  CTC_init();
+  ADC_init();
 
   while(1) {
+    loop_until_bit_is_set(TIFR0, OCF0A);
+
+    cnt++;
+
+    stt = ADC_read(0);
+
+    if (stt) stt = 1;
+    else stt = -1;
+
+    if (cnt == 1000) {
+      if ( (stt == -1) && (scnd == 0) )
+        continue;
+      scnd += stt;
+      cnt = 0;
+    }
+
+    if((scnd % 10) == 0) {
+      cur_diod = scnd / 10;
+
+      if (cur_diod == prev_diod) continue;
+      if (cur_diod > prev_diod) ; // turn_on(cur_diod);
+      else ; // turn_off(prev_diod)
+
+      prev_diod = cur_diod;
+    }
+
+    TIMSK0 |= _BV(OCF0A);
   }
 
   return 1;
@@ -31,6 +65,7 @@ void CTC_init(){
    * OCR0A defines TOP value;
    * OC0A - disconnected, normal port operation */
   TCCR0A |= _BV(WGM01);
+
   TCCR0A &= ~( _BV(COM0A1) | _BV(COM0A0) | _BV(WGM00) );
 
   /* Set compare register to 249 in order to have 250 ticks;
