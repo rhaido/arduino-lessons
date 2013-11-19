@@ -12,10 +12,9 @@ void USART_init(uint16_t);
 void USART_write(char *);
 void USART_transmit(uint8_t);
 
-void ADC_init();
-uint16_t ADC_read(uint8_t);
-
 void CTC_init(void);
+void GPIO_init_input();
+void GPIO_init_output();
 
 int main(void){
   uint16_t cnt  = 0;
@@ -23,41 +22,69 @@ int main(void){
   int8_t  stt  = 0;
   uint8_t prev_diod = 0, cur_diod  = 0;
 
+  GPIO_init_input();
+  GPIO_init_output();
+
   USART_init(MYUBRR);
   CTC_init();
-  ADC_init();
 
   while(1) {
+    /* if the CTC timer equaled OC0RA compare register */
     loop_until_bit_is_set(TIFR0, OCF0A);
 
     cnt++;
 
-    stt = ADC_read(0);
+    /* if 1000 milliseconds was counted */
+    if (cnt == 998) {
+      PORTB |= _BV(PB5);
 
-    if (stt) stt = 1;
-    else stt = -1;
-
-    if (cnt == 1000) {
-      if ( (stt == -1) && (scnd == 0) )
-        continue;
-      scnd += stt;
       cnt = 0;
+
+      /* PB0 is HIGH, clocks are turned over); */
+      if (PINB & _BV(PB0)) stt = -1;
+      else stt = 1;
+
+      _delay_ms(1);
+
+      PORTB &= ~(_BV(PB5));
+
+      /* check limit conditions */
+      if ( (stt == -1) && (scnd == 0) ) continue;
+      if ( (stt == 1) && (scnd == 60) ) continue;
+
+      /* add or remove 1 second from second counter depending on stt value */
+      scnd += stt;
+
+      if((scnd % 10) == 0) {
+        cur_diod = scnd / 10;
+
+        if (cur_diod == prev_diod) continue;
+        
+        if (cur_diod > prev_diod) { /* turn on diod (cur_diod - 1) in from diod_array*/
+          PORTD |= (1 << (1+cur_diod));
+        }
+        else PORTD &= ~(1 << (1+prev_diod)); // turn_off(prev_diod)
+
+        prev_diod = cur_diod;
+      }
     }
 
-    if((scnd % 10) == 0) {
-      cur_diod = scnd / 10;
-
-      if (cur_diod == prev_diod) continue;
-      if (cur_diod > prev_diod) ; // turn_on(cur_diod);
-      else ; // turn_off(prev_diod)
-
-      prev_diod = cur_diod;
-    }
-
-    TIMSK0 |= _BV(OCF0A);
+    /* Reset the flag */
+    TIFR0 |= _BV(OCF0A);
   }
 
   return 1;
+}
+
+void GPIO_init_input() {
+  DDRB &= ~(_BV(PB0));
+}
+
+void GPIO_init_output() {
+  DDRD |= _BV(PD2) | _BV(PD3) | _BV(PD4) | _BV(PD5) | _BV(PD6) | _BV(PD7);
+  DDRB |= _BV(PB5);
+  PORTD = 0;
+  PORTB &= ~(_BV(PB5));
 }
 
 void CTC_init(){
@@ -75,41 +102,6 @@ void CTC_init(){
 
   /* set the clock prescaler to 64 */
   TCCR0B |= _BV(CS01) | _BV(CS00);
-}
-
-void ADC_init(){
-	/* unless otherwise configured, arduinos use the internal Vcc
-	 * reference. MUX 0x0f samples the ground (0.0V) - safety setting. */
-  ADMUX = _BV(REFS0) | 0x0f;
-  DIDR0 = _BV(ADC0D);  /* Reduce 'digital' noise on analog pin by disabling digital input */
-
-  /* Set divider of prescaler to 128 to receive 125 kHz *
-   * Enable ADC */
-  ADCSRA = _BV(ADEN) | _BV(ADPS2) | _BV(ADPS1) | _BV(ADPS0);
-
-  /* Do the 'warm up': first conversion occupies 26 cycles first;
-   * each next only 13 */
-  ADCSRA |= _BV(ADSC);
-  loop_until_bit_is_clear(ADCSRA, ADSC);
-}
-
-uint16_t ADC_read(uint8_t pin){
-  uint16_t ADC_val = 0;
-  /* Preserve Previous REFS0 setting;
-   * Clear previous MUX channels;
-   * Set channel to read from; */
-  ADMUX = (ADMUX & 0xf0) | pin;
-
-  /* Start conversion - go-go-go! */
-  ADCSRA |= _BV(ADSC);
-
-  /* when the conversion is ended,  */
-  loop_until_bit_is_clear(ADCSRA, ADSC);
-
-  ADC_val = (uint16_t)ADCL; /* reading of ADCL blocks data registers ADCL/ADCH */
-  ADC_val += (ADCH<<8);     /* reading of ADCH unblocks them again */
-
-  return ADC_val;
 }
 
 void USART_init(uint16_t ubrr){
